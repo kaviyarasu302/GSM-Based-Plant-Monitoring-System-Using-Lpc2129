@@ -1,12 +1,9 @@
-#ifndef __GSM_HEADER_H__
-
-
-#define __GSM_HEADER_H__
-
-
-
-
 #include <lpc21xx.h>
+
+
+#include <string.h>
+
+
 
 
 #include "delay_header.h"
@@ -15,57 +12,46 @@
 #include "uart_header.h"
 
 
+#include "gsmheader.h"
 
 
-#define USER_NUMBER "+91 7418658567"
+#include "lcdheader.h"
 
 
+#include "Motor.h"
 
 
-void GSM_CONFIG(void);
-
-
-void GSM_SEND_MSG(char *);
-
-
-void GSM_RECEIVE_SMS(char *);
+#include "Motor.c"
 
 
 
 
-void GSM_CONFIG(void)
+#define SOIL_SENSOR  2
+
+
+
+
+char received_msg[100];
+
+
+
+
+int soil_sensor_read(void)
 
 
 {
 
 
-    delay_milliseconds(2000);
+    if((IOPIN0 &(1U<<SOIL_SENSOR)) == 0)
 
 
+        return 0;       // wet
 
 
-    UART0_STR("AT\r\n");
+    else
 
 
-    delay_milliseconds(1000);	  //100
-
-	//UART0_STR("ATE0\r\n");
-
-	//	delay_milliseconds(500);
-
-
-    UART0_STR("AT+CMGF=1\r\n");
-
-
-    delay_milliseconds(500);	//100
-
-
-
-
-    UART0_STR("AT+CNMI=2,2,0,0,0\r\n");
-
-
-    delay_milliseconds(500);	//100
+        return 1;       // dry
 
 
 }
@@ -73,103 +59,229 @@ void GSM_CONFIG(void)
 
 
 
-void GSM_SEND_MSG(char *msg)
+int main()
 
 
 {
 
 
-    UART0_STR("AT+CMGS=\"");
-
-
-    UART0_STR(USER_NUMBER);
-
-
-    UART0_STR("\"\r\n");
+    int soil_status;
 
 
 
 
-    delay_milliseconds(2000);
+    /* Soil sensor as input */
+
+
+    IODIR0 &= ~(1U << SOIL_SENSOR);
 
 
 
 
-    UART0_STR(msg);
+    /* Motor pins as output */
+
+
+    IODIR0 |= MOTOR_IN | MOTOR_OUT;
 
 
 
 
-    UART0_TX(0x1A);
+    MOTOR_OFF();
 
 
 
 
-    delay_milliseconds(5000);
+    /* UART initialization */
 
 
-}
-
-
-
-
-void GSM_RECEIVE_SMS(char *buffer)
-
-
-{
-
-
- unsigned char ch;
-
-
-    unsigned int i = 0;
+    UART0_CONFIG();
 
 
 
-    do
+
+    /* GSM initialization */
+
+
+    GSM_CONFIG();
+
+
+
+
+    /* LCD initialization */
+
+
+    LCD_INITIALIZATION();
+
+
+
+
+    LCD_COMMAND(0x01);
+
+
+    LCD_COMMAND(0x80);
+
+
+    LCD_STR("SMART IRRIGATION");
+
+
+
+
+    delay_milliseconds(1000);
+
+
+
+
+    while(1)
 
 
     {
 
 
-        ch = UART0_RX();
+        /*
 
 
-    }while(ch != '*');
+           Wait for SMS from user.
 
 
-	while(1)
-
-	{
-
-	ch =UART0_RX();
-
-	if(ch=='#')
-
-	     break;
-
-	if(i<99)
-
-	{
-
-	buffer[i++]=ch;
-
-	}
-
-	buffer[i]='\0';
+           SMS format expected:
 
 
-	 
-      }  
+           *status#
+
+
+        */
 
 
 
 
-   }
+        GSM_RECEIVE_SMS(received_msg);
 
 
 
 
+        LCD_COMMAND(0x01);
 
-#endif
 
+        LCD_COMMAND(0x80);
+
+
+        LCD_STR("MSG RECEIVED");
+
+
+
+
+        delay_milliseconds(2000);
+
+
+
+
+       
+
+
+        if(strcmp(received_msg, "status") == 0)
+
+
+        {
+
+
+            soil_status = soil_sensor_read();
+
+
+
+
+            if(soil_status==1)
+
+
+            {
+
+
+                /* Soil is dry */
+
+
+				GSM_SEND_MSG("DRY");
+
+                LCD_COMMAND(0x01);
+
+
+                LCD_COMMAND(0x80);
+
+
+                LCD_STR("SOIL IS DRY");
+
+
+
+
+               
+
+			 }
+
+			 else
+
+			 {
+
+
+			  GSM_SEND_MSG("WET");
+
+
+				LCD_COMMAND(0x01);
+
+
+                LCD_COMMAND(0x80);
+
+
+                LCD_STR("SOIL IS WET");
+
+
+
+
+              
+             }
+
+			 } 
+
+		else if(strcmp(received_msg,"pump on")==0)
+
+		{
+
+		MOTOR_ON();
+			
+			GSM_SEND_MSG("PUMP ON");
+
+		 	LCD_COMMAND(0x01);
+
+
+            LCD_COMMAND(0x80);
+
+
+            LCD_STR("PUMP ON");
+
+         
+
+			delay_seconds(60);
+
+			MOTOR_OFF();
+
+			GSM_SEND_MSG("PUMP OFF");
+
+			LCD_COMMAND(0x01);
+
+
+            LCD_COMMAND(0x80);
+
+
+            LCD_STR("PUMP OFF");
+
+           
+
+                
+
+		 }
+
+	 }
+
+  }      
+
+
+
+
+		      
