@@ -170,7 +170,7 @@ int main()
 
 
 
-        delay_milliseconds(1000);
+        delay_milliseconds(2000);
 
 
 
@@ -198,7 +198,7 @@ int main()
                 /* Soil is dry */
 
 
-
+		GSM_SEND_MSG("DRY");
 
                 LCD_COMMAND(0x01);
 
@@ -211,13 +211,16 @@ int main()
 
 
 
-                GSM_SEND_MSG("DRY");
+               
 
 			 }
 
 			 else
 
 			 {
+
+
+			  GSM_SEND_MSG("WET");
 
 
 				LCD_COMMAND(0x01);
@@ -231,8 +234,7 @@ int main()
 
 
 
-                GSM_SEND_MSG("WET");
-
+              
              }
 
 			 } 
@@ -242,6 +244,8 @@ int main()
 		{
 
 		MOTOR_ON();
+			
+			GSM_SEND_MSG("PUMP ON");
 
 		 	LCD_COMMAND(0x01);
 
@@ -251,11 +255,13 @@ int main()
 
             LCD_STR("PUMP ON");
 
-            GSM_SEND_MSG("PUMP ON");
+         
 
 			delay_seconds(60);
 
 			MOTOR_OFF();
+
+			GSM_SEND_MSG("PUMP OFF");
 
 			LCD_COMMAND(0x01);
 
@@ -265,7 +271,7 @@ int main()
 
             LCD_STR("PUMP OFF");
 
-            GSM_SEND_MSG("PUMP OFF");
+           
 
                 
 
@@ -274,6 +280,7 @@ int main()
 	 }
 
   }      
+
 
 
 
